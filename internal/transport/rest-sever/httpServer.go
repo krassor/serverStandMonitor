@@ -9,7 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog/log"
 
-	"github.com/serverStandMonitor/internal/transport/rest/routers"
+	"github.com/serverStandMonitor/internal/transport/rest-sever/routers"
 )
 
 type HttpServer struct {

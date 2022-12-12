@@ -2,13 +2,14 @@ package handlers
 
 import (
 	"encoding/json"
-	"net/http"
-
+	"fmt"
 	"github.com/rs/zerolog/log"
 	"github.com/serverStandMonitor/internal/models/dto"
 	"github.com/serverStandMonitor/internal/models/entities"
 	"github.com/serverStandMonitor/internal/services"
 	"github.com/serverStandMonitor/pkg/utils"
+	"net/http"
+	"net/url"
 )
 
 type DeviceHandlers interface {
@@ -30,6 +31,13 @@ func (d *deviceHandler) CreateDevice(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&deviceDto)
 	if err != nil {
 		log.Warn().Msgf("Error decode json: %s", err)
+		utils.Err(w, http.StatusInternalServerError, err)
+		return
+	}
+	deviceUrl := fmt.Sprintf("%s://%s:%s", deviceDto.DeviceSchema, deviceDto.DeviceIpAddress, deviceDto.DevicePort)
+	_, err = url.Parse(deviceUrl)
+	if err != nil {
+		log.Warn().Msgf("Error parse URL: %s", err)
 		utils.Err(w, http.StatusInternalServerError, err)
 		return
 	}

@@ -3,7 +3,7 @@ package routers
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
-	"github.com/serverStandMonitor/internal/transport/rest/handlers"
+	"github.com/serverStandMonitor/internal/transport/rest-sever/handlers"
 )
 
 type DeviceRouter struct {

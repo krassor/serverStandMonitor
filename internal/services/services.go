@@ -11,6 +11,8 @@ import (
 type DevicesRepoService interface {
 	GetDevices(ctx context.Context) ([]entities.Devices, error)
 	CreateNewDevice(ctx context.Context, device dto.RequestDeviceDto) (entities.Devices, error)
+	GetDeviceById(ctx context.Context, id uint) (entities.Devices, error)
+	UpdateDeviceStatus(ctx context.Context, device entities.Devices, deviceStatus bool) (entities.Devices, error)
 }
 
 type deviceRepoService struct {
@@ -28,14 +30,31 @@ func (d *deviceRepoService) GetDevices(ctx context.Context) ([]entities.Devices,
 	return devices, err
 }
 
-func (d *deviceRepoService) CreateNewDevice(ctx context.Context, device dto.RequestDeviceDto) (entities.Devices ,error) {
+func (d *deviceRepoService) GetDeviceById(ctx context.Context, id uint) (entities.Devices, error) {
+	device, err := d.deviceRepository.FindDeviceById(ctx, id)
+	return device, err
+}
+
+func (d *deviceRepoService) CreateNewDevice(ctx context.Context, device dto.RequestDeviceDto) (entities.Devices, error) {
 	deviceEntity := entities.Devices{
-		DeviceVendor:      device.DeviceVendor,
-		DeviceModel:       device.DeviceModel,
-		DeviceGetEndpoint: device.DeviceGetEndpoint,
-		DeviceIpAddress:   device.DeviceIpAddress,
-		DevicePort:        device.DevicePort,
+		DeviceVendor:    device.DeviceVendor,
+		DeviceName:      device.DeviceName,
+		DeviceSchema:    device.DeviceSchema,
+		DeviceIpAddress: device.DeviceIpAddress,
+		DevicePort:      device.DevicePort,
+		DeviceStatus:    false,
 	}
-	err := d.deviceRepository.Save(ctx, deviceEntity)
-	return deviceEntity, err
+	deviceResponse, err := d.deviceRepository.Create(ctx, deviceEntity)
+	return deviceResponse, err
+}
+
+func (d *deviceRepoService) UpdateDeviceStatus(ctx context.Context, device entities.Devices, deviceStatus bool) (entities.Devices, error) {
+	device.DeviceStatus = deviceStatus
+	deviceResponse, err := d.deviceRepository.Update(ctx, device)
+	return deviceResponse, err
+}
+
+func (d *deviceRepoService) getDevicesStrings(ctx context.Context) ([]entities.Devices, error) {
+	devices, err := d.deviceRepository.FindAll(ctx)
+	return devices, err
 }

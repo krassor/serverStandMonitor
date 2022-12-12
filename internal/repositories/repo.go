@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -11,9 +12,15 @@ import (
 	"gorm.io/gorm"
 )
 
+var (
+	deviceAlreadyExist error = errors.New("device already exist in the database")
+)
+
 type DevicesRepository interface {
 	FindAll(ctx context.Context) ([]entities.Devices, error)
-	Save(ctx context.Context, device entities.Devices) error
+	Create(ctx context.Context, device entities.Devices) (entities.Devices, error)
+	Update(ctx context.Context, device entities.Devices) (entities.Devices, error)
+	FindDeviceById(ctx context.Context, id uint) (entities.Devices, error)
 }
 
 type deviceRepository struct {
@@ -52,18 +59,37 @@ func (d *deviceRepository) FindAll(ctx context.Context) ([]entities.Devices, err
 	var devices []entities.Devices
 	tx := d.DB.WithContext(ctx).Find(&devices)
 	if tx.Error != nil {
-		//log.Warn().Msgf("Error finding devices in repo: %s", tx.Error)
 		return []entities.Devices{}, tx.Error
 	}
 
 	return devices, nil
 }
 
-func (d *deviceRepository) Save(ctx context.Context, device entities.Devices) error {
+func (d *deviceRepository) FindDeviceById(ctx context.Context, id uint) (entities.Devices, error) {
+	var device entities.Devices
+	tx := d.DB.WithContext(ctx).First(&device, id)
+	if tx.Error != nil {
+		return entities.Devices{}, tx.Error
+	}
+	return device, nil
+}
+
+func (d *deviceRepository) Create(ctx context.Context, device entities.Devices) (entities.Devices, error) {
+
+	tx := d.DB.WithContext(ctx).Where(entities.Devices{DeviceIpAddress: device.DeviceIpAddress, DevicePort: device.DevicePort}).FirstOrCreate(&device)
+	if tx.Error != nil {
+		return entities.Devices{}, tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return entities.Devices{}, deviceAlreadyExist
+	}
+	return device, nil
+}
+
+func (d *deviceRepository) Update(ctx context.Context, device entities.Devices) (entities.Devices, error) {
 	tx := d.DB.WithContext(ctx).Save(&device)
 	if tx.Error != nil {
-		//log.Warn().Msgf("Error saving device in repo: %s", tx.Error)
-		return tx.Error
+		return entities.Devices{}, tx.Error
 	}
-	return nil
+	return device, nil
 }
