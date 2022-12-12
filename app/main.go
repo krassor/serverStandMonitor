@@ -8,6 +8,7 @@ import (
 	"github.com/serverStandMonitor/internal/logger"
 	"github.com/serverStandMonitor/internal/repositories"
 	"github.com/serverStandMonitor/internal/services"
+	telegramBot "github.com/serverStandMonitor/internal/telegram"
 	httpServer "github.com/serverStandMonitor/internal/transport/rest"
 	"github.com/serverStandMonitor/internal/transport/rest/handlers"
 	"github.com/serverStandMonitor/internal/transport/rest/routers"
@@ -22,6 +23,8 @@ func main() {
 	deviceRouter := routers.NewDeviceRouter(deviceHandler)
 	deviceHttpServer := httpServer.NewHttpServer(deviceRouter)
 
+	deviceTgBot := telegramBot.NewTgBotApi()
+
 	maxSecond := 10 * time.Second
 	graceful.GracefulShutdown(
 		context.Background(),
@@ -34,4 +37,5 @@ func main() {
 	)
 
 	deviceHttpServer.Listen()
+	deviceTgBot.Update(60)
 }

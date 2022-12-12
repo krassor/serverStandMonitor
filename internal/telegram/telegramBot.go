@@ -8,6 +8,7 @@ import (
 )
 
 type TelegramBot interface {
+	Update(updateTimeout int)
 }
 
 type telegramBotImpl struct {
@@ -41,6 +42,7 @@ func (tgBotImpl *telegramBotImpl) Update(updateTimeout int) {
 		}
 
 		if !update.Message.IsCommand() { // ignore any non-command Messages
+			log.Info().Msgf("tgbot warn: Not command: %s", update.Message.Command())
 			continue
 		}
 
