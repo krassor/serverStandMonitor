@@ -18,7 +18,7 @@ type telegramBotImpl struct {
 func NewTgBotApi() TelegramBot {
 	bot, err := tgbotapi.NewBotAPI(os.Getenv("TGBOT_APITOKEN"))
 	if err != nil {
-		log.Error().Msgf("Error auth telegram bot %s: %s", bot.Self.UserName, err)
+		log.Error().Msgf("Error auth telegram bot: %s", err)
 	}
 
 	bot.Debug = true
@@ -46,6 +46,7 @@ func (tgBotImpl *telegramBotImpl) Update(updateTimeout int) {
 			continue
 		}
 
+		log.Info().Msgf("tgbot recieve command: %s", update.Message.Command())
 		// Create a new MessageConfig. We don't have text yet,
 		// so we leave it empty.
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
