@@ -107,7 +107,7 @@ func (bot *Bot) Shutdown(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("Error shutdown telegram bot: %s", ctx.Err())
+			return fmt.Errorf("error shutdown telegram bot: %s", ctx.Err())
 		default:
 			bot.tgbot.StopReceivingUpdates()
 		}

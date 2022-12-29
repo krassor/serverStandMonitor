@@ -27,19 +27,6 @@ func NewDeviceFetcher(service services.DevicesRepoService) *DeviceFetcher {
 }
 
 func (f *DeviceFetcher) Start(ctx context.Context) {
-	var entitySlice []entities.Devices
-	for {
-		ent, err := f.service.GetDevices(ctx)
-		if err != nil {
-			log.Error().Msgf("Fetcher: cannot get data from repo: %s", err)
-			time.Sleep(3)
-			continue
-		}
-		entitySlice = ent
-		break
-	}
-
-	log.Info().Msgf("entitySlice: %v", entitySlice)
 
 	var wg sync.WaitGroup
 	for {
@@ -49,25 +36,31 @@ func (f *DeviceFetcher) Start(ctx context.Context) {
 			return
 		default:
 		}
+		entityList := f.getDeviceList(ctx, 3)
 		log.Info().Msgf("select default")
-		wg.Add(len(entitySlice))
-		log.Info().Msgf("workgroup add %d elements", len(entitySlice))
-		for i, e := range entitySlice {
+
+		wg.Add(len(entityList))
+		log.Info().Msgf("workgroup add %d elements", len(entityList))
+
+		for _, e := range entityList {
 			go func(entity entities.Devices) {
 				defer wg.Done()
-				log.Info().Msgf("%d Enter anonymous go routine", i)
+				log.Info().Msgf("Enter anonymous go routine")
+
 				deviceUrl := fmt.Sprintf("%s://%s:%s", entity.DeviceSchema, entity.DeviceIpAddress, entity.DevicePort)
-				log.Info().Msgf("%d device URL: %s", i, deviceUrl)
+				log.Info().Msgf("device URL: %s", deviceUrl)
+
 				status, err := f.client.GetStatus(ctx, deviceUrl)
 				if err != nil {
-					log.Error().Msgf("%d Error get device %s %s %s status in fetcher.Start(): %s", i, entity.ID, entity.DeviceVendor, entity.DeviceName, err)
+					log.Error().Msgf("Error get device %s %s %s status in fetcher.Start(): %s", entity.ID, entity.DeviceVendor, entity.DeviceName, err)
 				}
-				log.Info().Msgf("%d Device status: %b", i, status)
+				log.Info().Msgf("Device status: %b", status)
+
 				_, err = f.service.UpdateDeviceStatus(ctx, entity, status)
 				if err != nil {
-					log.Error().Msgf("%d Error update device %s %s %s status in fetcher.Start(): %s", i, entity.ID, entity.DeviceVendor, entity.DeviceName, err)
+					log.Error().Msgf("Error update device %s %s %s status in fetcher.Start(): %s", entity.ID, entity.DeviceVendor, entity.DeviceName, err)
 				}
-				log.Info().Msgf("%d End of anonymous go routine", i)
+				log.Info().Msgf("End of anonymous go routine")
 			}(e)
 		}
 		wg.Wait()
@@ -80,9 +73,25 @@ func (f *DeviceFetcher) Shutdown(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("Error shutdown device fetcher: %s", ctx.Err())
+			return fmt.Errorf("error shutdown device fetcher: %s", ctx.Err())
 		default:
 			f.exitCh <- true
 		}
 	}
+}
+
+func (f *DeviceFetcher) getDeviceList(ctx context.Context, timeoutDuration time.Duration) []entities.Devices {
+	var entityList []entities.Devices
+	var err error
+	for {
+		entityList, err = f.service.GetDevices(ctx)
+		if err != nil {
+			log.Error().Msgf("Fetcher: cannot get data from repo: %s", err)
+			time.Sleep(timeoutDuration)
+			continue
+		}
+
+		break
+	}
+	return entityList
 }

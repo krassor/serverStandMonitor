@@ -19,7 +19,7 @@ type deviceRepoService struct {
 	deviceRepository repositories.DevicesRepository
 }
 
-func NewdeviceRepoService(deviceRepository repositories.DevicesRepository) DevicesRepoService {
+func NewDeviceRepoService(deviceRepository repositories.DevicesRepository) DevicesRepoService {
 	return &deviceRepoService{
 		deviceRepository: deviceRepository,
 	}

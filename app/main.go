@@ -20,14 +20,14 @@ func main() {
 	logger.InitLogger()
 
 	deviceRepository := repositories.NewDevicesRepository()
-	deviceRepoService := services.NewdeviceRepoService(deviceRepository)
+	deviceRepoService := services.NewDeviceRepoService(deviceRepository)
 	deviceHandler := handlers.NewDeviceHandler(deviceRepoService)
 	deviceRouter := routers.NewDeviceRouter(deviceHandler)
 	deviceHttpServer := httpServer.NewHttpServer(deviceRouter)
 
 	deviceTgBot := telegramBot.NewBot(deviceRepoService)
 
-	fetcher := fetcher.NewDeviceFetcher(deviceRepoService)
+	fetcherDevice := fetcher.NewDeviceFetcher(deviceRepoService)
 
 	maxSecond := 15 * time.Second
 	ctx, cancel := context.WithCancel(context.Background())
@@ -42,11 +42,14 @@ func main() {
 			"tgBot": func(ctx context.Context) error {
 				return deviceTgBot.Shutdown(ctx)
 			},
+			"deviceFetcher": func(ctx context.Context) error {
+				return fetcherDevice.Shutdown(ctx)
+			},
 		},
 	)
 
 	go deviceHttpServer.Listen()
 	go deviceTgBot.Update(ctx, 60)
-	fetcher.Start(ctx)
+	fetcherDevice.Start(ctx)
 
 }
