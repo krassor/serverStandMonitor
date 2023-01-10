@@ -13,38 +13,50 @@ import (
 
 type Operation func(ctx context.Context) error
 
-func GracefulShutdown(ctx context.Context, timeout time.Duration, operations map[string]Operation) {
-	if len(operations) == 0 {
-		return
-	}
-
+// gracefulShutdown waits for termination syscalls and doing clean up operations after received it
+func GracefulShutdown(ctx context.Context, timeout time.Duration, ops map[string]Operation) <-chan struct{} {
 	wait := make(chan struct{})
 	go func() {
-		signalchan := make(chan os.Signal, 1)
-		signal.Notify(signalchan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-		oscall := <-signalchan
+		s := make(chan os.Signal, 1)
 
-		timeAfterExecuted := time.AfterFunc(timeout, func() {
-			log.Warn().Msg("Force shutdown")
+		// add any other syscalls that you want to be notified with
+		signal.Notify(s, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+		<-s
+
+		log.Info().Msgf("shutting down")
+
+		// set timeout for the ops to be done to prevent system hang
+		timeoutFunc := time.AfterFunc(timeout, func() {
+			log.Info().Msgf("timeout %d ms has been elapsed, force exit", timeout.Milliseconds())
 			os.Exit(0)
 		})
-		defer timeAfterExecuted.Stop()
 
-		wg := sync.WaitGroup{}
-		wg.Add(len(operations))
-		for k, op := range operations {
-			go func(k string, op Operation) {
+		defer timeoutFunc.Stop()
+
+		var wg sync.WaitGroup
+
+		// Do the operations asynchronously to save time
+		for key, op := range ops {
+			wg.Add(1)
+			innerOp := op
+			innerKey := key
+			go func() {
 				defer wg.Done()
-				log.Warn().Msgf("Shutdown %s", k)
-				err := op(ctx)
-				if err != nil {
-					log.Err(err).Msg("Error when stop server")
+
+				log.Info().Msgf("cleaning up: %s", innerKey)
+				if err := innerOp(ctx); err != nil {
+					log.Error().Msgf("%s: clean up failed: %s", innerKey, err.Error())
+					return
 				}
-			}(k, op)
+
+				log.Info().Msgf("%s was shutdown gracefully", innerKey)
+			}()
 		}
+
 		wg.Wait()
 
-		log.Warn().Msgf("system call:%+v", oscall)
 		close(wait)
 	}()
+
+	return wait
 }

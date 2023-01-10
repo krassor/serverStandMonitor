@@ -11,5 +11,5 @@ type Devices struct {
 	DeviceSchema    string `gorm:"column:deviceSchema"`
 	DeviceIpAddress string `gorm:"column:deviceIpAddress"`
 	DevicePort      string `gorm:"column:devicePort"`
-	DeviceStatus    bool   `gorm:"column:deviceStatus"`
+	DeviceStatus    bool   `gorm:"column:deviceStatus;default:false"`
 }

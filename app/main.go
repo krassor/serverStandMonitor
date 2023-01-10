@@ -30,10 +30,9 @@ func main() {
 	fetcherDevice := fetcher.NewDeviceFetcher(deviceRepoService)
 
 	maxSecond := 15 * time.Second
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	graceful.GracefulShutdown(
-		ctx,
+
+	waitShutdown := graceful.GracefulShutdown(
+		context.Background(),
 		maxSecond,
 		map[string]graceful.Operation{
 			"http": func(ctx context.Context) error {
@@ -49,7 +48,7 @@ func main() {
 	)
 
 	go deviceHttpServer.Listen()
-	go deviceTgBot.Update(ctx, 60)
-	fetcherDevice.Start(ctx)
-
+	go deviceTgBot.Update(context.Background(), 60)
+	go fetcherDevice.Start(context.Background())
+	<-waitShutdown
 }

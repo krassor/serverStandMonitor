@@ -3,27 +3,29 @@ package rest_client
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"sync"
+	"time"
+
 	"github.com/rs/zerolog/log"
 	"github.com/serverStandMonitor/internal/models/entities"
 	"github.com/serverStandMonitor/internal/services"
 	"github.com/serverStandMonitor/internal/transport/rest-client/client"
-	"net/http"
-	"sync"
-	"time"
 )
 
 const (
-	fetcherDuration time.Duration = 5
+	fetcherDuration      time.Duration = 5
+	timeoutGetDeviceList time.Duration = 3
 )
 
 type DeviceFetcher struct {
 	client  client.DeviceStatusClient
 	service services.DevicesRepoService
-	exitCh  chan bool
+	exit    chan struct{}
 }
 
 func NewDeviceFetcher(service services.DevicesRepoService) *DeviceFetcher {
-	return &DeviceFetcher{client: client.NewDefaultDevice(&http.Client{}), service: service, exitCh: make(chan bool)}
+	return &DeviceFetcher{client: client.NewDefaultDevice(&http.Client{}), service: service, exit: make(chan struct{})}
 }
 
 func (f *DeviceFetcher) Start(ctx context.Context) {
@@ -31,12 +33,12 @@ func (f *DeviceFetcher) Start(ctx context.Context) {
 	var wg sync.WaitGroup
 	for {
 		select {
-		case <-f.exitCh:
-			log.Info().Msgf("<-f.exitCh")
+		case <-f.exit:
+			log.Info().Msgf("Exit device fetcher")
 			return
 		default:
 		}
-		entityList := f.getDeviceList(ctx, 3)
+		entityList := f.getDeviceList(ctx, timeoutGetDeviceList)
 		log.Info().Msgf("select default")
 
 		wg.Add(len(entityList))
@@ -54,7 +56,7 @@ func (f *DeviceFetcher) Start(ctx context.Context) {
 				if err != nil {
 					log.Error().Msgf("Error get device %s %s %s status in fetcher.Start(): %s", entity.ID, entity.DeviceVendor, entity.DeviceName, err)
 				}
-				log.Info().Msgf("Device status: %b", status)
+				log.Info().Msgf("Device status: %t", status)
 
 				_, err = f.service.UpdateDeviceStatus(ctx, entity, status)
 				if err != nil {
@@ -75,7 +77,8 @@ func (f *DeviceFetcher) Shutdown(ctx context.Context) error {
 		case <-ctx.Done():
 			return fmt.Errorf("error shutdown device fetcher: %s", ctx.Err())
 		default:
-			f.exitCh <- true
+			f.exit <- struct{}{}
+			return nil
 		}
 	}
 }
