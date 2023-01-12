@@ -6,6 +6,7 @@ import (
 	"github.com/serverStandMonitor/internal/models/dto"
 	"github.com/serverStandMonitor/internal/models/entities"
 	"github.com/serverStandMonitor/internal/repositories"
+
 )
 
 type DevicesRepoService interface {
@@ -54,7 +55,7 @@ func (d *deviceRepoService) UpdateDeviceStatus(ctx context.Context, device entit
 	return deviceResponse, err
 }
 
-func (d *deviceRepoService) getDevicesStrings(ctx context.Context) ([]entities.Devices, error) {
-	devices, err := d.deviceRepository.FindAll(ctx)
-	return devices, err
-}
+// func (d *deviceRepoService) getDevicesStrings(ctx context.Context) ([]entities.Devices, error) {
+// 	devices, err := d.deviceRepository.FindAll(ctx)
+// 	return devices, err
+// }
