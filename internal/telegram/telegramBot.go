@@ -4,18 +4,22 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/rs/zerolog/log"
-	"github.com/serverStandMonitor/internal/services"
+	"github.com/serverStandMonitor/internal/models/entities"
+	services "github.com/serverStandMonitor/internal/services/devices"
+	subscriber "github.com/serverStandMonitor/internal/services/subscriberServices"
 )
 
 type Bot struct {
-	tgbot   *tgbotapi.BotAPI
-	service services.DevicesRepoService
+	tgbot      *tgbotapi.BotAPI
+	service    services.DevicesRepoService
+	subscriber subscriber.SubscriberRepoService
 }
 
-func NewBot(service services.DevicesRepoService) *Bot {
+func NewBot(service services.DevicesRepoService, subscriber subscriber.SubscriberRepoService) *Bot {
 	bot, err := tgbotapi.NewBotAPI(os.Getenv("TGBOT_APITOKEN"))
 	if err != nil {
 		log.Error().Msgf("Error auth telegram bot: %s", err)
@@ -26,8 +30,9 @@ func NewBot(service services.DevicesRepoService) *Bot {
 	log.Info().Msgf("Authorized on account %s", bot.Self.UserName)
 
 	return &Bot{
-		tgbot:   bot,
-		service: service,
+		tgbot:      bot,
+		service:    service,
+		subscriber: subscriber,
 	}
 }
 
@@ -83,9 +88,14 @@ func (bot *Bot) commandHandle(msg *tgbotapi.Message) error {
 
 	switch msg.Command() {
 	case "help":
-		replyMsg.Text = "I understand /list"
+		replyMsg.Text = "I understand /list and /subscribe"
 	case "list":
 		err := bot.list(&replyMsg)
+		if err != nil {
+			return err
+		}
+	case "subscribe":
+		err := bot.subscribe(&replyMsg)
 		if err != nil {
 			return err
 		}
@@ -100,6 +110,42 @@ func (bot *Bot) commandHandle(msg *tgbotapi.Message) error {
 		return err
 	}
 
+	return nil
+}
+
+func (bot *Bot) DeviceStatusNotify(ctx context.Context, device entities.Devices, status bool) error {
+	var statusString string
+	if status {
+		statusString = "ONLINE"
+	} else {
+		statusString = "OFFLINE"
+	}
+
+	msgText := fmt.Sprintf(
+		"Device %s %s is %s",
+		device.DeviceVendor,
+		device.DeviceName,
+		statusString,
+	)
+	subscribers, err := bot.subscriber.GetSubscribers(ctx)
+	if err != nil {
+		return err
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(len(subscribers))
+
+	for _, s := range subscribers {
+		go func(s entities.Subscriber, msgText string, wg *sync.WaitGroup) {
+			msg := tgbotapi.NewMessage(s.ChatID, msgText)
+			_, err := bot.tgbot.Send(msg)
+			if err != nil {
+				log.Error().Msgf("DeviceStatusNotify(): Error sending telegramm notify: %s", err)
+			}
+			wg.Done()
+		}(s, msgText, &wg)
+	}
+	wg.Wait()
 	return nil
 }
 

@@ -7,27 +7,30 @@ import (
 	"github.com/serverStandMonitor/internal/graceful"
 	"github.com/serverStandMonitor/internal/logger"
 	"github.com/serverStandMonitor/internal/repositories"
-	"github.com/serverStandMonitor/internal/services"
+	services "github.com/serverStandMonitor/internal/services/devices"
+	subscriber "github.com/serverStandMonitor/internal/services/subscriberServices"
+	fetcher "github.com/serverStandMonitor/internal/services/fetcher"
 	telegramBot "github.com/serverStandMonitor/internal/telegram"
 	httpServer "github.com/serverStandMonitor/internal/transport/rest-sever"
 	"github.com/serverStandMonitor/internal/transport/rest-sever/handlers"
 	"github.com/serverStandMonitor/internal/transport/rest-sever/routers"
 
-	fetcher "github.com/serverStandMonitor/internal/transport/rest-client"
+
 )
 
 func main() {
 	logger.InitLogger()
 
-	deviceRepository := repositories.NewDevicesRepository()
-	deviceRepoService := services.NewDeviceRepoService(deviceRepository)
+	repository := repositories.NewRepository()
+	deviceRepoService := services.NewDeviceRepoService(repository)
+	subscriberService := subscriber.NewSubscriberRepoService(repository)
 	deviceHandler := handlers.NewDeviceHandler(deviceRepoService)
 	deviceRouter := routers.NewDeviceRouter(deviceHandler)
 	deviceHttpServer := httpServer.NewHttpServer(deviceRouter)
 
-	deviceTgBot := telegramBot.NewBot(deviceRepoService)
+	deviceTgBot := telegramBot.NewBot(deviceRepoService, subscriberService)
 
-	fetcherDevice := fetcher.NewDeviceFetcher(deviceRepoService)
+	fetcherDevice := fetcher.NewDeviceFetcher(deviceRepoService, deviceTgBot)
 
 	maxSecond := 15 * time.Second
 

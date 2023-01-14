@@ -1,4 +1,4 @@
-package services
+package devicesService
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 	"github.com/serverStandMonitor/internal/models/dto"
 	"github.com/serverStandMonitor/internal/models/entities"
 	"github.com/serverStandMonitor/internal/repositories"
-
 )
 
 type DevicesRepoService interface {
@@ -27,7 +26,7 @@ func NewDeviceRepoService(deviceRepository repositories.DevicesRepository) Devic
 }
 
 func (d *deviceRepoService) GetDevices(ctx context.Context) ([]entities.Devices, error) {
-	devices, err := d.deviceRepository.FindAll(ctx)
+	devices, err := d.deviceRepository.FindAllDevices(ctx)
 	return devices, err
 }
 
@@ -45,13 +44,13 @@ func (d *deviceRepoService) CreateNewDevice(ctx context.Context, device dto.Requ
 		DevicePort:      device.DevicePort,
 		DeviceStatus:    false,
 	}
-	deviceResponse, err := d.deviceRepository.Create(ctx, deviceEntity)
+	deviceResponse, err := d.deviceRepository.CreateDevice(ctx, deviceEntity)
 	return deviceResponse, err
 }
 
 func (d *deviceRepoService) UpdateDeviceStatus(ctx context.Context, device entities.Devices, deviceStatus bool) (entities.Devices, error) {
 	device.DeviceStatus = deviceStatus
-	deviceResponse, err := d.deviceRepository.Update(ctx, device)
+	deviceResponse, err := d.deviceRepository.UpdateDevice(ctx, device)
 	return deviceResponse, err
 }
 

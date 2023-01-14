@@ -1,4 +1,4 @@
-package services
+package fetcher
 
 import (
 	"context"
@@ -9,23 +9,25 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/serverStandMonitor/internal/models/entities"
-
+	services "github.com/serverStandMonitor/internal/services/devices"
+	telegramBot "github.com/serverStandMonitor/internal/telegram"
 	"github.com/serverStandMonitor/internal/transport/rest-client/client"
 )
 
 const (
-	fetcherDuration      time.Duration = 5
-	timeoutGetDeviceList time.Duration = 3
+	fetcherDuration      time.Duration = 35 * time.Second
+	timeoutGetDeviceList time.Duration = 3 * time.Second
 )
 
 type DeviceFetcher struct {
 	client  client.DeviceStatusClient
-	service DevicesRepoService
+	service services.DevicesRepoService
+	bot     *telegramBot.Bot
 	exit    chan struct{}
 }
 
-func NewDeviceFetcher(service DevicesRepoService) *DeviceFetcher {
-	return &DeviceFetcher{client: client.NewDefaultDevice(&http.Client{}), service: service, exit: make(chan struct{})}
+func NewDeviceFetcher(service services.DevicesRepoService, bot *telegramBot.Bot) *DeviceFetcher {
+	return &DeviceFetcher{client: client.NewDefaultDevice(&http.Client{}), service: service, bot: bot, exit: make(chan struct{})}
 }
 
 func (f *DeviceFetcher) Start(ctx context.Context) {
@@ -49,7 +51,7 @@ func (f *DeviceFetcher) Start(ctx context.Context) {
 			go f.requestDeviceStatus(ctx, e, &wg)
 		}
 		wg.Wait()
-		time.Sleep(fetcherDuration * time.Second)
+		time.Sleep(fetcherDuration)
 
 	}
 }
@@ -68,7 +70,10 @@ func (f *DeviceFetcher) requestDeviceStatus(ctx context.Context, entity entities
 	log.Info().Msgf("Device status: %t", status)
 
 	if status != entity.DeviceStatus {
-		
+		err = f.bot.DeviceStatusNotify(ctx, entity, status)
+		if err != nil {
+			log.Error().Msgf("Error notify subscribers: %s", err)
+		}
 		_, err = f.service.UpdateDeviceStatus(ctx, entity, status)
 		if err != nil {
 			log.Error().Msgf("Error update device %s %s %s status in fetcher.Start(): %s", entity.ID, entity.DeviceVendor, entity.DeviceName, err)
@@ -76,7 +81,6 @@ func (f *DeviceFetcher) requestDeviceStatus(ctx context.Context, entity entities
 
 		log.Info().Msgf("End of anonymous go routine")
 	}
-
 
 }
 

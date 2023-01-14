@@ -6,7 +6,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/serverStandMonitor/internal/models/dto"
 	"github.com/serverStandMonitor/internal/models/entities"
-	"github.com/serverStandMonitor/internal/services"
+	services "github.com/serverStandMonitor/internal/services/devices"
 	"github.com/serverStandMonitor/pkg/utils"
 	"net/http"
 	"net/url"
