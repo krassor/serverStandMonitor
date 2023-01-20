@@ -13,14 +13,16 @@ func (bot *Bot) callbackQueryHandle(ctx context.Context, callbackQuery *tgbotapi
 	id, err := strconv.Atoi(callbackQuery.Data)
 	if err != nil {
 		callback := tgbotapi.NewCallback(callbackQuery.ID, "Internal error")
-		bot.tgbot.Request(callback)
+		_, errw := bot.tgbot.Request(callback)
+		err = fmt.Errorf("%w", errw)
 		return err
 	}
 
 	deviceEntity, err := bot.service.GetDeviceById(ctx, uint(id))
 	if err != nil {
 		callback := tgbotapi.NewCallback(callbackQuery.ID, "Internal error")
-		bot.tgbot.Request(callback)
+		_, errw := bot.tgbot.Request(callback)
+		err = fmt.Errorf("%w", errw)
 		return err
 	}
 

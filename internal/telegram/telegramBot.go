@@ -46,7 +46,7 @@ func (bot *Bot) Update(ctx context.Context, updateTimeout int) {
 	for update := range updates {
 
 		if update.Message == nil && update.CallbackQuery == nil { // ignore any non-Message updates
-			log.Info().Msgf("tgbot warn: Not message: %s", update.Message)
+			log.Warn().Msgf("tgbot warn: Not message: %s", update.Message)
 			continue
 		}
 
@@ -60,12 +60,12 @@ func (bot *Bot) Update(ctx context.Context, updateTimeout int) {
 		}
 
 		if !update.Message.IsCommand() { // ignore any non-command Messages
-			log.Info().Msgf("tgbot warn: Not command: %s", update.Message)
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "This is not command")
-			msg.ReplyToMessageID = update.Message.MessageID
-			if _, err := bot.tgbot.Send(msg); err != nil {
-				log.Error().Msgf("Error tgbot send message: %s", err)
-			}
+			log.Warn().Msgf("tgbot warn: Not command: %s", update.Message)
+			// msg := tgbotapi.NewMessage(update.Message.Chat.ID, "This is not command")
+			// msg.ReplyToMessageID = update.Message.MessageID
+			// if _, err := bot.tgbot.Send(msg); err != nil {
+			// 	log.Error().Msgf("Error tgbot send message: %s", err)
+			// }
 			continue
 		}
 
@@ -89,6 +89,8 @@ func (bot *Bot) commandHandle(msg *tgbotapi.Message) error {
 	switch msg.Command() {
 	case "help":
 		replyMsg.Text = "I understand /list and /subscribe"
+	case "start":
+		replyMsg.Text = fmt.Sprintf("Hello, %s! I'm stand device monitor.\nEnter /list command and select device.\nEnter /subscribe to subscribe on devices status changes", msg.Chat.UserName)
 	case "list":
 		err := bot.list(&replyMsg)
 		if err != nil {
@@ -99,8 +101,6 @@ func (bot *Bot) commandHandle(msg *tgbotapi.Message) error {
 		if err != nil {
 			return err
 		}
-	case "start":
-		replyMsg.Text = fmt.Sprintf("Hello, %s! I'm stand device monitor.\nEnter /list command and select device", msg.Chat.UserName)
 	default:
 		replyMsg.Text = "I don't know this command"
 	}
@@ -149,14 +149,14 @@ func (bot *Bot) DeviceStatusNotify(ctx context.Context, device entities.Devices,
 	return nil
 }
 
-func (bot *Bot) Shutdown(ctx context.Context) error {
-	for {
-		select {
-		case <-ctx.Done():
-			return fmt.Errorf("error shutdown telegram bot: %s", ctx.Err())
-		default:
-			bot.tgbot.StopReceivingUpdates()
-			return nil
-		}
-	}
-}
+// func (bot *Bot) Shutdown(ctx context.Context) error {
+// 	for {
+// 		select {
+// 		case <-ctx.Done():
+// 			return fmt.Errorf("error shutdown telegram bot: %s", ctx.Err())
+// 		default:
+// 			bot.tgbot.StopReceivingUpdates()
+// 			return nil
+// 		}
+// 	}
+// }

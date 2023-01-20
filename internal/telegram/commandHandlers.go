@@ -33,7 +33,6 @@ func (bot *Bot) list(msg *tgbotapi.MessageConfig) error {
 
 	if inlineKeyboardRow != nil {
 		inlineNumericKeyboard.InlineKeyboard = append(inlineNumericKeyboard.InlineKeyboard, inlineKeyboardRow)
-		inlineKeyboardRow = nil
 	}
 
 	msg.Text = "Select device:"
@@ -44,13 +43,13 @@ func (bot *Bot) list(msg *tgbotapi.MessageConfig) error {
 func (bot *Bot) subscribe(msg *tgbotapi.MessageConfig) error {
 	subscriber, err := bot.subscriber.GetSubscriberByChatId(context.Background(), msg.ChatID)
 	if err != nil {
-		msg.Text = "Error finding subscriber ib the DB"
+		msg.Text = "Error finding subscriber in the DB"
 		return err
 	}
 	if (subscriber == entities.Subscriber{}) {
 		_, err = bot.subscriber.CreateNewSubscriber(context.Background(), msg.ChatID, msg.ChannelUsername)
 		if err != nil {
-			msg.Text = "Error creating subscriber ib the DB"
+			msg.Text = "Error creating subscriber in the DB"
 			return err
 		}
 		msg.Text = "Succeful subscribe"

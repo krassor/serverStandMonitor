@@ -13,28 +13,44 @@ func Message(status bool, message interface{}) map[string]interface{} {
 
 }
 
-func Respond(w http.ResponseWriter, data map[string]interface{}) {
+func Respond(w http.ResponseWriter, data map[string]interface{}) error {
 	w.Header().Add("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(data)
+	err := json.NewEncoder(w).Encode(data)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func Json(w http.ResponseWriter, httpCode int, data interface{}) {
+func Json(w http.ResponseWriter, httpCode int, data interface{}) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(httpCode)
-	json.NewEncoder(w).Encode(&data)
+	err := json.NewEncoder(w).Encode(&data)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func Text(w http.ResponseWriter, httpCode int, message string) {
+func Text(w http.ResponseWriter, httpCode int, message string) error {
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(httpCode)
-	w.Write([]byte(message))
+	_, err := w.Write([]byte(message))
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func Err(w http.ResponseWriter, httpCode int, err error) {
+func Err(w http.ResponseWriter, httpCode int, err error) error {
 
 	w.Header().Set("Content-Type", "application/json")
 	//need more error status
 	w.WriteHeader(httpCode)
 	res := Message(false, err.Error())
-	json.NewEncoder(w).Encode(res)
+	returnErr := json.NewEncoder(w).Encode(res)
+	if returnErr != nil {
+		return returnErr
+	}
+	return nil
 }

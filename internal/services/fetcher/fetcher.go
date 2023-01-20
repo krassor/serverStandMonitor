@@ -23,24 +23,16 @@ type DeviceFetcher struct {
 	client  client.DeviceStatusClient
 	service services.DevicesRepoService
 	bot     *telegramBot.Bot
-	exit    chan struct{}
 }
 
 func NewDeviceFetcher(service services.DevicesRepoService, bot *telegramBot.Bot) *DeviceFetcher {
-	return &DeviceFetcher{client: client.NewDefaultDevice(&http.Client{}), service: service, bot: bot, exit: make(chan struct{})}
+	return &DeviceFetcher{client: client.NewDefaultDevice(&http.Client{}), service: service, bot: bot}
 }
 
 func (f *DeviceFetcher) Start(ctx context.Context) {
 
 	var wg sync.WaitGroup
 	for {
-		select {
-		case <-f.exit:
-			log.Info().Msgf("Exit device fetcher")
-			return
-		default:
-		}
-
 		entityList := f.getDeviceList(ctx, timeoutGetDeviceList)
 		log.Info().Msgf("select default")
 
@@ -65,7 +57,7 @@ func (f *DeviceFetcher) requestDeviceStatus(ctx context.Context, entity entities
 
 	status, err := f.client.GetStatus(ctx, deviceUrl)
 	if err != nil {
-		log.Error().Msgf("Error get device %s %s %s status in fetcher.Start(): %s", entity.ID, entity.DeviceVendor, entity.DeviceName, err)
+		log.Error().Msgf("Error get device %d %s %s status in fetcher.Start(): %s", entity.ID, entity.DeviceVendor, entity.DeviceName, err)
 	}
 	log.Info().Msgf("Device status: %t", status)
 
@@ -76,7 +68,7 @@ func (f *DeviceFetcher) requestDeviceStatus(ctx context.Context, entity entities
 		}
 		_, err = f.service.UpdateDeviceStatus(ctx, entity, status)
 		if err != nil {
-			log.Error().Msgf("Error update device %s %s %s status in fetcher.Start(): %s", entity.ID, entity.DeviceVendor, entity.DeviceName, err)
+			log.Error().Msgf("Error update device %d %s %s status in fetcher.Start(): %s", entity.ID, entity.DeviceVendor, entity.DeviceName, err)
 		}
 
 		log.Info().Msgf("End of anonymous go routine")
@@ -88,12 +80,6 @@ func (f *DeviceFetcher) getDeviceList(ctx context.Context, timeoutDuration time.
 	var entityList []entities.Devices
 	var err error
 	for {
-		select {
-		case <-f.exit:
-			log.Info().Msgf("Exit device fetcher")
-			return entityList
-		default:
-		}
 		entityList, err = f.service.GetDevices(ctx)
 		if err != nil {
 			log.Error().Msgf("Fetcher: cannot get data from repo: %s", err)
@@ -104,16 +90,4 @@ func (f *DeviceFetcher) getDeviceList(ctx context.Context, timeoutDuration time.
 		break
 	}
 	return entityList
-}
-
-func (f *DeviceFetcher) Shutdown(ctx context.Context) error {
-	for {
-		select {
-		case <-ctx.Done():
-			return fmt.Errorf("error shutdown device fetcher: %s", ctx.Err())
-		default:
-			f.exit <- struct{}{}
-			return nil
-		}
-	}
 }
